@@ -5,78 +5,75 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
+	"strings"
+
+	"github.com/ParallaxRoot/argusenum/internal/logger"
 )
 
-type CRTShResult struct {
-	NameValue string `json:"name_value"`
+type CrtshSource struct {
+	log *logger.Logger
 }
 
-func FetchCRTSh(domain string) ([]string, error) {
-	api := fmt.Sprintf("https://crt.sh/?q=%%25.%s&output=json", url.QueryEscape(domain))
+func NewCrtshSource(log *logger.Logger) *CrtshSource {
+	return &CrtshSource{log: log}
+}
 
-	req, err := http.NewRequest("GET", api, nil)
+func (c *CrtshSource) Name() string {
+	return "crt.sh"
+}
+
+func (c *CrtshSource) Enumerate(domain string) ([]string, error) {
+	url := fmt.Sprintf("https://crt.sh/?q=%%25.%s&output=json", domain)
+
+	c.log.Println("Requesting:", url)
+
+	resp, err := http.Get(url)
 	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("User-Agent", "ArgusEnum/0.1")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("http request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
-	raw, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
 
-	var data []CRTShResult
-	if err := json.Unmarshal(raw, &data); err != nil {
-		return nil, fmt.Errorf("crt.sh returned non-JSON or rate limited: %v", err)
+	raw := string(body)
+	if strings.Contains(raw, "<") {
+		return nil, fmt.Errorf("crt.sh returned HTML instead of JSON")
 	}
 
-	seen := make(map[string]struct{})
-	var subs []string
+	var rows []map[string]interface{}
+	dec := json.NewDecoder(strings.NewReader(raw))
+	err = dec.Decode(&rows)
+	if err != nil {
+		return nil, fmt.Errorf("failed JSON decode: %w", err)
+	}
 
-	for _, entry := range data {
-		for _, sub := range normalize(entry.NameValue) {
-			if _, ok := seen[sub]; !ok {
-				seen[sub] = struct{}{}
-				subs = append(subs, sub)
+	out := []string{}
+	seen := map[string]struct{}{}
+
+	for _, r := range rows {
+		name, _ := r["name_value"].(string)
+		if name == "" {
+			continue
+		}
+
+		for _, s := range strings.Split(name, "\n") {
+			s = strings.TrimSpace(s)
+			s = strings.ToLower(s)
+			if strings.HasPrefix(s, "*.") {
+				s = s[2:]
+			}
+
+			if strings.HasSuffix(s, domain) {
+				if _, ok := seen[s]; !ok {
+					out = append(out, s)
+					seen[s] = struct{}{}
+				}
 			}
 		}
 	}
 
-	return subs, nil
-}
-
-func normalize(name string) []string {
-	var out []string
-
-	for _, line := range splitLine(name) {
-		line = trim(line)
-		if line != "" {
-			out = append(out, line)
-		}
-	}
-
-	return out
-}
-
-func splitLine(s string) []string {
-	return []string{s}
-}
-
-func trim(s string) string {
-	for {
-		if len(s) > 0 && (s[0] == '*' || s[0] == '.') {
-			s = s[1:]
-		} else {
-			break
-		}
-	}
-	return s
+	return out, nil
 }
