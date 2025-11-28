@@ -22,7 +22,7 @@ func (c *CrtshSource) Name() string {
 	return "crt.sh"
 }
 
-func (c *CrtshSource) Enumerate(domain string) ([]string, error) {
+func (c *CrtshSource) Enum(ctx context.Context, domain string) ([]string, error) {
 	url := fmt.Sprintf("https://crt.sh/?q=%%25.%s&output=json", domain)
 
 	c.log.Infof("Requesting:", url)
