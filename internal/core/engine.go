@@ -50,7 +50,7 @@ func (e *Engine) runPassive() error {
 		}
 	}
 
-	e.log.Info("Total passive subdomains: %d\n", len(allSubs))
+	e.log.Infof("Total passive subdomains: %d\n", len(allSubs))
 	for s := range allSubs {
 		fmt.Println(s)
 	}
