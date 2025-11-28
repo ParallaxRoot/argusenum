@@ -25,7 +25,7 @@ func (c *CrtshSource) Name() string {
 func (c *CrtshSource) Enumerate(domain string) ([]string, error) {
 	url := fmt.Sprintf("https://crt.sh/?q=%%25.%s&output=json", domain)
 
-	c.log.Println("Requesting:", url)
+	c.log.infof("Requesting:", url)
 
 	resp, err := http.Get(url)
 	if err != nil {
