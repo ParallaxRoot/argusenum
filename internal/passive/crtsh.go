@@ -1,98 +1,82 @@
 package passive
 
 import (
-	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
-	"time"
-
-	"github.com/ParallaxRoot/argusenum/internal/utils"
+	"net/url"
 )
 
-type crtshSource struct {
-	client  *http.Client
-	baseURL string
-}
-
-func NewCrtshSource() Source {
-	tr := &http.Transport{
-		Proxy:           http.ProxyFromEnvironment,
-		TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12},
-	}
-
-	return &crtshSource{
-		client: &http.Client{
-			Timeout:   30 * time.Second,
-			Transport: tr,
-		},
-		baseURL: "https://crt.sh",
-	}
-}
-
-func (c *crtshSource) Name() string {
-	return "crt.sh"
-}
-
-type crtshEntry struct {
+type CRTShResult struct {
 	NameValue string `json:"name_value"`
 }
 
-func (c *crtshSource) Enum(ctx context.Context, domain string) ([]string, error) {
-	domain = utils.NormalizeDomain(domain)
+func FetchCRTSh(domain string) ([]string, error) {
+	api := fmt.Sprintf("https://crt.sh/?q=%%25.%s&output=json", url.QueryEscape(domain))
 
-	url := fmt.Sprintf("%s/?q=%%25.%s&output=json", c.baseURL, domain)
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequest("GET", api, nil)
 	if err != nil {
-		return nil, fmt.Errorf("crtsh: building request: %w", err)
+		return nil, err
 	}
-
 
 	req.Header.Set("User-Agent", "ArgusEnum/0.1")
 
-	resp, err := c.client.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("crtsh: performing request: %w", err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-		return nil, fmt.Errorf("crtsh: non-200 status %d: %s", resp.StatusCode, string(body))
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
 	}
 
-	var entries []crtshEntry
-	if err := json.NewDecoder(resp.Body).Decode(&entries); err != nil {
-		return nil, fmt.Errorf("crtsh: decoding json: %w", err)
+	var data []CRTShResult
+	if err := json.Unmarshal(raw, &data); err != nil {
+		return nil, fmt.Errorf("crt.sh returned non-JSON or rate limited: %v", err)
 	}
 
 	seen := make(map[string]struct{})
+	var subs []string
 
-	for _, e := range entries {
-		rawNames := strings.Split(e.NameValue, "\n")
-		for _, raw := range rawNames {
-			name := utils.NormalizeDomain(raw)
-			if name == "" {
-				continue
+	for _, entry := range data {
+		for _, sub := range normalize(entry.NameValue) {
+			if _, ok := seen[sub]; !ok {
+				seen[sub] = struct{}{}
+				subs = append(subs, sub)
 			}
-			if strings.HasPrefix(name, "*.") {
-				name = strings.TrimPrefix(name, "*.")
-			}
-			if !utils.IsSubdomainOf(name, domain) {
-				continue
-			}
-			seen[name] = struct{}{}
 		}
 	}
 
-	out := make([]string, 0, len(seen))
-	for sub := range seen {
-		out = append(out, sub)
+	return subs, nil
+}
+
+func normalize(name string) []string {
+	var out []string
+
+	for _, line := range splitLine(name) {
+		line = trim(line)
+		if line != "" {
+			out = append(out, line)
+		}
 	}
 
-	return out, nil
+	return out
+}
+
+func splitLine(s string) []string {
+	return []string{s}
+}
+
+func trim(s string) string {
+	for {
+		if len(s) > 0 && (s[0] == '*' || s[0] == '.') {
+			s = s[1:]
+		} else {
+			break
+		}
+	}
+	return s
 }

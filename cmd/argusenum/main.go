@@ -20,7 +20,7 @@ func main() {
 	outputPath := flag.String("o", "results.json", "Output JSON file path")
 
 	passiveOnly := flag.Bool("passive", false, "Run only passive enumeration")
-	activeOnly := flag.Bool("active", flase, "Run only active enumeration (bruteforce/permutations)")
+	activeOnly := flag.Bool("active", false, "Run only active enumeration (bruteforce/permutations)")
 	resolversFile := flag.String("resolvers", "", "Custom resolvers file (optional)")
 	threads := flag.Int("threads", 64, "Number of worker threads for DNS/HTTP")
 
@@ -75,7 +75,7 @@ func printBanner() {
    ╔══════════════════════════════════════════════╗
    ║              ArgusEnum v0.1                 ║
    ║     Next-gen subdomain enumerator           ║
-   ║     by ParallaxRoot (HackerOne)             ║
+   ║     by ParallaxRoot                         ║
    ╚══════════════════════════════════════════════╝
 `)
 }
