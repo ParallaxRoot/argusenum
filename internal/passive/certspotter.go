@@ -41,7 +41,6 @@ type certSpotterIssuance struct {
 }
 
 func (s *CertSpotterSource) Enum(ctx context.Context, domain string) ([]string, error) {
-	s.log.Infof("[+] Running passive source: %s", s.Name())
 
 	v := url.Values{}
 	v.Set("domain", domain)
