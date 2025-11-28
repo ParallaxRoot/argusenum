@@ -21,25 +21,25 @@ func NewEngine(cfg config.Config, log *logger.Logger) *Engine {
 }
 
 func (e *Engine) Run() error {
-	e.log.Println("Starting engine...")
+	e.log.Info("Starting engine...")
 
 	if e.cfg.PassiveOnly {
 		return e.runPassive()
 	}
 
-	e.log.Println("No mode selected (active not implemented yet). Running passive by default.")
+	e.log.Info("No mode selected (active not implemented yet). Running passive by default.")
 	return e.runPassive()
 }
 
 func (e *Engine) runPassive() error {
-	e.log.Println("Running passive enumeration...")
+	e.log.Info("Running passive enumeration...")
 
 	src := passive.NewPassiveEngine(e.log)
 
 	allSubs := map[string]struct{}{}
 
 	for _, domain := range e.cfg.Domains {
-		e.log.Println("Enumerating:", domain)
+		e.log.Info("Enumerating:", domain)
 		subs, err := src.Enumerate(domain)
 		if err != nil {
 			return fmt.Errorf("passive enumeration failed: %w", err)
@@ -50,7 +50,7 @@ func (e *Engine) runPassive() error {
 		}
 	}
 
-	e.log.Printf("Total passive subdomains: %d\n", len(allSubs))
+	e.log.Info("Total passive subdomains: %d\n", len(allSubs))
 	for s := range allSubs {
 		fmt.Println(s)
 	}
