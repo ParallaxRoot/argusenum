@@ -22,6 +22,7 @@ func NewPassiveEngine(log *logger.Logger) *PassiveEngine {
         sources: []Source{
             NewCrtshSource(log),
             NewCertSpotterSource(log),
+			NewRapidDNSSource(log),
         },
     }
 }
