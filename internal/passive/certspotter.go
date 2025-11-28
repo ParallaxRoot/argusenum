@@ -41,7 +41,7 @@ type certSpotterIssuance struct {
 }
 
 func (s *CertSpotterSource) Enum(ctx context.Context, domain string) ([]string, error) {
-	s.log.Infof("[+] Running passive source: %s", s.Name())
+	s.log.Info("[+] Running passive source: %s", s.Name())
 
 	v := url.Values{}
 	v.Set("domain", domain)
@@ -49,7 +49,7 @@ func (s *CertSpotterSource) Enum(ctx context.Context, domain string) ([]string, 
 	v.Set("expand", "dns_names")
 
 	endpoint := "https://api.certspotter.com/v1/issuances?" + v.Encode()
-	s.log.Infof("Requesting: %s", endpoint)
+	s.log.Info("Requesting: %s", endpoint)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -100,6 +100,6 @@ func (s *CertSpotterSource) Enum(ctx context.Context, domain string) ([]string, 
 		out = append(out, d)
 	}
 
-	s.log.Infof("[certspotter] found %d candidates", len(out))
+	s.log.Info("[certspotter] found %d candidates", len(out))
 	return out, nil
 }
