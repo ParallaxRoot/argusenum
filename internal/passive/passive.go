@@ -1,51 +1,52 @@
 package passive
 
 import (
-    "context"
+	"context"
 
-    "github.com/ParallaxRoot/argusenum/internal/logger"
+	"github.com/ParallaxRoot/argusenum/internal/logger"
 )
 
 type PassiveEngine struct {
-    sources []Source
-    log     *logger.Logger
+	sources []Source
+	log     *logger.Logger
 }
 
 type Source interface {
-    Name() string
-    Enum(ctx context.Context, domain string) ([]string, error)
+	Name() string
+	Enum(ctx context.Context, domain string) ([]string, error)
 }
 
 func NewPassiveEngine(log *logger.Logger) *PassiveEngine {
-    return &PassiveEngine{
-        log: log,
-        sources: []Source{
-            NewCrtshSource(log),
-            NewCertSpotterSource(log),
+	return &PassiveEngine{
+		log: log,
+		sources: []Source{
+			NewCrtshSource(log),
+			NewCertSpotterSource(log),
 			NewRapidDNSSource(log),
 			NewAlienVaultSource(log),
 			NewSecurityTrailsSource(log),
-        },
-    }
+			NewDNSDumpsterSource(log),
+		},
+	}
 }
 
 func (p *PassiveEngine) Enumerate(domain string) ([]string, error) {
-    p.log.Info("[Passive] Starting passive enumeration...")
+	p.log.Info("[Passive] Starting passive enumeration...")
 
-    combined := []string{}
-    ctx := context.Background()
+	combined := []string{}
+	ctx := context.Background()
 
-    for _, src := range p.sources {
-        p.log.Infof("[+] Running passive source: " + src.Name())
+	for _, src := range p.sources {
+		p.log.Infof("[+] Running passive source: " + src.Name())
 
-        subs, err := src.Enum(ctx, domain)
-        if err != nil {
-            p.log.Error("    [!] Source error (" + src.Name() + "): " + err.Error())
-            continue
-        }
+		subs, err := src.Enum(ctx, domain)
+		if err != nil {
+			p.log.Error("    [!] Source error (" + src.Name() + "): " + err.Error())
+			continue
+		}
 
-        combined = append(combined, subs...)
-    }
+		combined = append(combined, subs...)
+	}
 
-    return combined, nil
+	return combined, nil
 }
