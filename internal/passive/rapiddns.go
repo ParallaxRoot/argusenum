@@ -30,8 +30,6 @@ func (r *RapidDNSSource) Name() string {
 }
 
 func (r *RapidDNSSource) Enum(ctx context.Context, domain string) ([]string, error) {
-	r.log.Infof("[+] Running passive source: %s", r.Name())
-
 	url := fmt.Sprintf("https://rapiddns.io/subdomain/%s?full=1", domain)
 	r.log.Infof("Requesting: %s", url)
 
