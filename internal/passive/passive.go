@@ -24,6 +24,7 @@ func NewPassiveEngine(log *logger.Logger) *PassiveEngine {
             NewCertSpotterSource(log),
 			NewRapidDNSSource(log),
 			NewAlienVaultSource(log),
+			NewSecurityTrailsSource(log)
         },
     }
 }
