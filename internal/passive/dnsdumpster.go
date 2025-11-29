@@ -57,8 +57,6 @@ type DNSDumpsterResponse struct {
 }
 
 func (s *DNSDumpsterSource) Enum(ctx context.Context, domain string) ([]string, error) {
-	s.log.Infof("[+] Running passive source: %s", s.Name())
-
 	endpoint := fmt.Sprintf("https://api.dnsdumpster.com/domain/%s", domain)
 	s.log.Infof("Requesting: %s", endpoint)
 

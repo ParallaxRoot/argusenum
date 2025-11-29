@@ -26,6 +26,7 @@ func NewPassiveEngine(log *logger.Logger) *PassiveEngine {
 			NewAlienVaultSource(log),
 			NewSecurityTrailsSource(log),
 			NewDNSDumpsterSource(log),
+			NewShodanSource(log),
 		},
 	}
 }
