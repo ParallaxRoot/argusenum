@@ -58,7 +58,7 @@ func (s *CommonCrawlSource) Enum(ctx context.Context, domain string) ([]string, 
 		return nil, fmt.Errorf("decode collections: %w", err)
 	}
 
-	if len(collections) > 3 {
+	if len(collections) > 20 {
 		collections = collections[:3]
 	}
 
@@ -66,7 +66,7 @@ func (s *CommonCrawlSource) Enum(ctx context.Context, domain string) ([]string, 
 
 	for _, col := range collections {
 		indexURL := fmt.Sprintf(
-			"%s?url=*.%s&matchType=domain&output=json",
+			"%s?url=*.%s&matchType=prefix&output=json",
 			col.CDXAPI,
 			url.QueryEscape(domain),
 		)
