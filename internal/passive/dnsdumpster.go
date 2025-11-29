@@ -70,7 +70,7 @@ func (s *DNSDumpsterSource) Enum(ctx context.Context, domain string) ([]string, 
 	if s.apiKey == "" {
 		s.log.Info("[dnsdumpster] No API key found in ARGUSENUM_DNSDUMPSTER_API_KEY")
 	} else {
-		req.Header.Set("Authorization", "Token "+s.apiKey)
+		req.Header.Set("X-API-Key: ", s.apiKey)
 	}
 
 	req.Header.Set("Accept", "application/json")
