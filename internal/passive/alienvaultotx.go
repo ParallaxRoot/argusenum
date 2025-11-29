@@ -43,7 +43,7 @@ type otxResponse struct {
 
 func (s *AlienVaultSource) Enum(ctx context.Context, domain string) ([]string, error) {
     if s.apiKey == "" {
-        s.log.Warn("[otx] API key missing, skipping this source")
+        s.log.Error("[otx] API key missing, skipping this source")
         return nil, nil
     }
 
