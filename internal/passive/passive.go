@@ -27,6 +27,7 @@ func NewPassiveEngine(log *logger.Logger) *PassiveEngine {
 			NewSecurityTrailsSource(log),
 			NewDNSDumpsterSource(log),
 			NewShodanSource(log),
+			NewCommonCrawlSource(log),
 		},
 	}
 }
