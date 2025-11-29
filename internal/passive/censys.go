@@ -16,7 +16,8 @@ import (
 type CensysSource struct {
 	log    *logger.Logger
 	client *http.Client
-	apiKey string
+	apiID  string
+	apiSec string
 }
 
 func NewCensysSource(log *logger.Logger) *CensysSource {
@@ -25,7 +26,8 @@ func NewCensysSource(log *logger.Logger) *CensysSource {
 		client: &http.Client{
 			Timeout: 25 * time.Second,
 		},
-		apiKey: os.Getenv("ARGUSENUM_CENSYS_API_KEY"),
+		apiID:  os.Getenv("ARGUSENUM_CENSYS_API_ID"),
+		apiSec: os.Getenv("ARGUSENUM_CENSYS_API_SECRET"),
 	}
 }
 
@@ -34,10 +36,11 @@ func (s *CensysSource) Name() string {
 }
 
 type censysQuery struct {
-	Query string `json:"q"`
+	Q       string `json:"q"`
+	PerPage int    `json:"per_page"`
 }
 
-type censysResponse struct {
+type censysCertResp struct {
 	Result struct {
 		Hits []struct {
 			Parsed struct {
@@ -50,49 +53,55 @@ type censysResponse struct {
 func (s *CensysSource) Enum(ctx context.Context, domain string) ([]string, error) {
 	s.log.Infof("[+] Running passive source: %s", s.Name())
 
-	if s.apiKey == "" {
-		return nil, fmt.Errorf("missing ARGUSENUM_CENSYS_API_KEY")
+	if s.apiID == "" || s.apiSec == "" {
+		return nil, fmt.Errorf("Censys API credentials missing")
 	}
 
-	url := "https://search.censys.io/api/v2/certificates/search"
-
-	body, _ := json.Marshal(&censysQuery{
-		Query: fmt.Sprintf("parsed.names: %s OR parsed.names: *.%s", domain, domain),
+	body, _ := json.Marshal(censysQuery{
+		Q:       fmt.Sprintf("names: *.%s", domain),
+		PerPage: 100,
 	})
 
-	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(body))
+	req, err := http.NewRequestWithContext(
+		ctx,
+		"POST",
+		"https://search.censys.io/api/v2/certificates/search",
+		bytes.NewBuffer(body),
+	)
 	if err != nil {
-		return nil, fmt.Errorf("creating request: %w", err)
+		return nil, err
 	}
 
+	req.SetBasicAuth(s.apiID, s.apiSec)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+s.apiKey)
 
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("doing request: %w", err)
+		return nil, fmt.Errorf("request censys: %w", err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		b := make([]byte, 512)
-		resp.Body.Read(b)
-		return nil, fmt.Errorf("censys status %d: %s", resp.StatusCode, string(b))
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("censys status %d", resp.StatusCode)
 	}
 
-	var data censysResponse
+	var data censysCertResp
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return nil, fmt.Errorf("decode: %w", err)
+		return nil, fmt.Errorf("decode censys: %w", err)
 	}
 
 	seen := map[string]struct{}{}
 
 	for _, hit := range data.Result.Hits {
-		for _, name := range hit.Parsed.Names {
-			name = strings.ToLower(strings.TrimPrefix(name, "*."))
+		for _, n := range hit.Parsed.Names {
+			n = strings.ToLower(strings.TrimSpace(n))
+			n = strings.TrimPrefix(n, "*.")
+			if n == "" {
+				continue
+			}
 
-			if name == domain || strings.HasSuffix(name, "."+domain) {
-				seen[name] = struct{}{}
+			if n == domain || strings.HasSuffix(n, "."+domain) {
+				seen[n] = struct{}{}
 			}
 		}
 	}
