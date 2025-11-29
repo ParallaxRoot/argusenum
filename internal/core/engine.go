@@ -39,7 +39,7 @@ func (e *Engine) runPassive() error {
 	allSubs := map[string]struct{}{}
 
 	for _, domain := range e.cfg.Domains {
-		e.log.Infof("Enumerating:", domain)
+		e.log.Infof("Enumerating: %s", domain)
 		subs, err := src.Enumerate(domain)
 		if err != nil {
 			return fmt.Errorf("passive enumeration failed: %w", err)

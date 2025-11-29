@@ -48,7 +48,7 @@ func (s *AlienVaultSource) Enum(ctx context.Context, domain string) ([]string, e
     }
 
     url := fmt.Sprintf("https://otx.alienvault.com/api/v1/indicators/domain/%s/passive_dns", domain)
-    s.log.Infof("Requesting: ", url)
+    s.log.Infof("Requesting: %s", url)
 
     req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
     if err != nil {
