@@ -35,7 +35,7 @@ func (p *PassiveEngine) Enumerate(domain string) ([]string, error) {
     ctx := context.Background()
 
     for _, src := range p.sources {
-        p.log.Info("[+] Running passive source: " + src.Name())
+        p.log.Infof("[+] Running passive source: " + src.Name())
 
         subs, err := src.Enum(ctx, domain)
         if err != nil {

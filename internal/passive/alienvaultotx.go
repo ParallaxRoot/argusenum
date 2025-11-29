@@ -47,8 +47,6 @@ func (s *AlienVaultSource) Enum(ctx context.Context, domain string) ([]string, e
         return nil, nil
     }
 
-    s.log.Infof("[+] Running passive source: ", s.Name())
-
     url := fmt.Sprintf("https://otx.alienvault.com/api/v1/indicators/domain/%s/passive_dns", domain)
     s.log.Infof("Requesting: ", url)
 
