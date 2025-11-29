@@ -21,7 +21,7 @@ func CheckHosts(subs []models.Subdomain, cfg config.Config, log *logger.Logger) 
 		url := "https://" + s.Name
 		resp, err := client.Get(url)
 		if err != nil {
-			log.Warnf("[http] %s: %v", s.Name, err)
+			log.Infof("[http] %s: %v", s.Name, err)
 			continue
 		}
 		resp.Body.Close()

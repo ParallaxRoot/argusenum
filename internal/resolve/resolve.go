@@ -15,7 +15,7 @@ func ResolveAll(subs []models.Subdomain, cfg config.Config, log *logger.Logger) 
 	for i, s := range out {
 		ips, err := net.LookupIP(s.Name)
 		if err != nil {
-			log.Warnf("[resolve] %s: %v", s.Name, err)
+			log.Infof("[resolve] %s: %v", s.Name, err)
 			continue
 		}
 		out[i].IPs = ips
