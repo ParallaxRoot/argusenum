@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ParallaxRoot/argusenum/internal/logger"
@@ -22,7 +23,7 @@ func NewCommonCrawlSource(log *logger.Logger) *CommonCrawlSource {
 	return &CommonCrawlSource{
 		log: log,
 		client: &http.Client{
-			Timeout: 25 * time.Second,
+			Timeout: 30 * time.Second,
 		},
 	}
 }
@@ -32,13 +33,9 @@ func (s *CommonCrawlSource) Name() string {
 }
 
 type ccCollection struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	CDXAPI  string `json:"cdx-api"`
-	API     string `json:"api"`
-	Robots  string `json:"robots"`
-	Sitemap string `json:"sitemap"`
-	Updated string `json:"updated"`
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	CDXAPI string `json:"cdx-api"`
 }
 
 func (s *CommonCrawlSource) Enum(ctx context.Context, domain string) ([]string, error) {
@@ -58,58 +55,80 @@ func (s *CommonCrawlSource) Enum(ctx context.Context, domain string) ([]string, 
 		return nil, fmt.Errorf("decode collections: %w", err)
 	}
 
-	if len(collections) > 20 {
-		collections = collections[:3]
+	if len(collections) == 0 {
+		return nil, fmt.Errorf("no CommonCrawl collections returned")
 	}
 
-	seen := map[string]struct{}{}
+	s.log.Infof("[commoncrawl] Total collections: %d", len(collections))
+
+	maxWorkers := 5
+	sem := make(chan struct{}, maxWorkers)
+
+	seen := sync.Map{}
+	var wg sync.WaitGroup
 
 	for _, col := range collections {
-		indexURL := fmt.Sprintf(
-			"%s?url=*.%s&matchType=prefix&output=json",
-			col.CDXAPI,
-			url.QueryEscape(domain),
-		)
+		col := col
+		wg.Add(1)
 
-		s.log.Infof("Querying CommonCrawl index: %s", indexURL)
+		sem <- struct{}{}
 
-		req2, _ := http.NewRequestWithContext(ctx, "GET", indexURL, nil)
-		resp2, err := s.client.Do(req2)
-		if err != nil {
-			s.log.Errorf("    [!] error %s: %v", col.Name, err)
-			continue
-		}
+		go func() {
+			defer wg.Done()
+			defer func() { <-sem }()
 
-		scanner := bufio.NewScanner(resp2.Body)
-		for scanner.Scan() {
-			line := scanner.Text()
-			if !strings.Contains(line, domain) {
-				continue
+			indexURL := fmt.Sprintf(
+				"%s?url=*.%s&matchType=domain&output=json",
+				col.CDXAPI,
+				url.QueryEscape(domain),
+			)
+
+			s.log.Infof("Querying CommonCrawl index: %s", indexURL)
+
+			req2, _ := http.NewRequestWithContext(ctx, "GET", indexURL, nil)
+			resp2, err := s.client.Do(req2)
+			if err != nil {
+				s.log.Errorf("    [!] Error in %s: %v", col.Name, err)
+				return
 			}
+			defer resp2.Body.Close()
 
-			var record map[string]interface{}
-			if err := json.Unmarshal([]byte(line), &record); err != nil {
-				continue
+			scanner := bufio.NewScanner(resp2.Body)
+			for scanner.Scan() {
+				line := scanner.Text()
+				if !strings.Contains(line, domain) {
+					continue
+				}
+
+				var rec map[string]interface{}
+				if err := json.Unmarshal([]byte(line), &rec); err != nil {
+					continue
+				}
+
+				rawURL, ok := rec["url"].(string)
+				if !ok || rawURL == "" {
+					continue
+				}
+
+				host := extractHostname(rawURL)
+				if host == "" {
+					continue
+				}
+
+				if host == domain || strings.HasSuffix(host, "."+domain) {
+					seen.Store(strings.ToLower(host), struct{}{})
+				}
 			}
-
-			rawURL, _ := record["url"].(string)
-			host := extractHostname(rawURL)
-			if host == "" {
-				continue
-			}
-
-			if host == domain || strings.HasSuffix(host, "."+domain) {
-				seen[strings.ToLower(host)] = struct{}{}
-			}
-		}
-
-		resp2.Body.Close()
+		}()
 	}
 
-	out := make([]string, 0, len(seen))
-	for d := range seen {
-		out = append(out, d)
-	}
+	wg.Wait()
+
+	var out []string
+	seen.Range(func(k, _ interface{}) bool {
+		out = append(out, k.(string))
+		return true
+	})
 
 	s.log.Infof("[commoncrawl] found %d candidates", len(out))
 	return out, nil
