@@ -28,7 +28,7 @@ func NewPassiveEngine(log *logger.Logger) *PassiveEngine {
 			NewDNSDumpsterSource(log),
 			NewShodanSource(log),
 			NewVirusTotalSource(log),
-			NewCensysSource(log),
+			NewChaosSource(log),
 		},
 	}
 }
