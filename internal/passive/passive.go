@@ -29,6 +29,7 @@ func NewPassiveEngine(log *logger.Logger) *PassiveEngine {
 			NewShodanSource(log),
 			NewVirusTotalSource(log),
 			NewChaosSource(log),
+			NewAnubisSource(log),
 		},
 	}
 }
